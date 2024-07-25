@@ -1,0 +1,2 @@
+#do not index any databases
+*.db

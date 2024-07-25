@@ -1,0 +1,110 @@
+from flask import Flask, jsonify, send_file, send_from_directory, make_response
+import sqlite3
+import os
+import math
+import io
+import base64
+
+app = Flask(__name__, static_folder='../frontend/marble-gallery/build', static_url_path='')
+
+DB_PATH = os.path.join(os.path.dirname(__file__), 'marble_images-2.db')
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    if path != "" and os.path.exists(app.static_folder + '/' + path):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
+
+@app.route('/api/images', methods=['GET'])
+def get_images():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT id, marbleName, marbleOrigin, fileName, stainResistance, costRange, stoneColor, description, thermalExpansion FROM images")
+    images = []
+    for row in c.fetchall():
+        id, marble_name, marble_origin, file_name, stain_resistance, cost_range, stone_color, description, thermal_expansion = row
+        images.append({
+            'id': id,
+            'marbleName': marble_name,
+            'marbleOrigin': marble_origin,
+            'fileName': file_name,
+            'imageUrl': f'/api/image/{id}',
+            'stainResistance': stain_resistance,
+            'costRange': cost_range,
+            'stoneColor': stone_color,
+            'description': description,
+            'thermalExpansion': thermal_expansion
+        })
+    conn.close()
+    return jsonify(images)
+
+@app.route('/api/image/<int:image_id>')
+def serve_image(image_id):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT image FROM images WHERE id = ?", (image_id,))
+    result = c.fetchone()
+    conn.close()
+
+    if result:
+        image_data = result[0]
+        response = make_response(send_file(
+            io.BytesIO(image_data),
+            mimetype='image/png'
+        ))
+        response.headers['Cache-Control'] = 'public, max-age=86400'  # Cache for 24 hours
+        return response
+    else:
+        return "Image not found", 404
+    
+@app.route('/api/featured-marbles', methods=['GET'])
+def get_featured_marbles():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT id, marbleName, marbleOrigin, fileName, costRange, description FROM images WHERE featured = 1 LIMIT 3")
+    marbles = []
+    for row in c.fetchall():
+        id, marble_name, marble_origin, file_name, costRange, description = row
+        marbles.append({
+            'id': id,
+            'name': marble_name,
+            'origin': marble_origin,
+            'costRange': costRange if costRange else 'Price on request',
+            'description': description if description else f'Beautiful {marble_name} from {marble_origin}',
+            'imageUrl': f'/api/image/{id}'
+        })
+    conn.close()
+    return jsonify(marbles)
+
+import base64
+
+@app.route('/api/marble/<int:marble_id>/vendors', methods=['GET'])
+def get_marble_vendors(marble_id):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""
+        SELECT v.id, v.name, v.contact, v.location, v.vendorLogo
+        FROM vendors v
+        JOIN marble_vendor_association mva ON v.id = mva.vendor_id
+        WHERE mva.marble_id = ?
+    """, (marble_id,))
+    vendors = []
+    for row in c.fetchall():
+        vendor = {
+            'id': row[0],
+            'name': row[1],
+            'contact': row[2],
+            'location': row[3],
+        }
+        if row[4]:  # Check if vendorLogo is not None
+            vendor['vendorLogo'] = base64.b64encode(row[4]).decode('utf-8')
+        else:
+            vendor['vendorLogo'] = None
+        vendors.append(vendor)
+    conn.close()
+    return jsonify(vendors)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5001, debug=False)

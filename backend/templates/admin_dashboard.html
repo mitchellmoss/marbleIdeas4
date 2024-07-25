@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marble Gallery Admin Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            color: #0f0e0e;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .dashboard-header {
+            background: linear-gradient(135deg, #4a5568, #2d3748);
+            color: #e0e0e0;
+            padding: 30px 0;
+            text-align: center;
+            border-radius: 15px;
+            margin-bottom: 40px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        h1 {
+            font-size: 2.5em;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .graph-container {
+            background-color: #1e1e1e;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 25px;
+            margin-bottom: 40px;
+            transition: transform 0.3s ease;
+        }
+        .graph-container:hover {
+            transform: translateY(-5px);
+        }
+        .graph {
+            width: 100%;
+            height: 450px;
+        }
+        h2 {
+            color: #e0e0e0;
+            margin-top: 0;
+            font-size: 1.8em;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .stats-container {
+            background-color: #1e1e1e;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 25px;
+        }
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 25px;
+            padding: 20px;
+            background-color: #2a2a2a;
+            border-radius: 10px;
+            transition: background-color 0.3s ease;
+        }
+        .stat-item:hover {
+            background-color: #333;
+        }
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .stat-label {
+            font-weight: bold;
+            color: #b0b0b0;
+            font-size: 1.1em;
+        }
+        .stat-value {
+            color: #4299e1;
+            font-size: 1.2em;
+            font-weight: 700;
+        }
+        .stat-description {
+            font-size: 0.9em;
+            color: #a0aec0;
+            margin-top: 5px;
+        }
+        @media (max-width: 768px) {
+            .graph {
+                height: 350px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            h2 {
+                font-size: 1.5em;
+            }
+        }
+         .logout-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background-color: #ff6b6b;
+            color: #121212;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .logout-button:hover {
+            background-color: #ff8787;
+        }
+        .raw-logs {
+            max-height: 400px;
+            overflow-y: auto;
+            background-color: #2a2a2a;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #e0e0e0;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-bottom: 1px solid #444;
+        }
+
+        .log-controls {
+            margin-bottom: 10px;
+        }
+
+        #log-type-filter {
+            background-color: #333;
+            color: #e0e0e0;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <a href="{{ url_for('logout') }}" class="logout-button">Logout</a>
+    <div class="container">
+        <div class="dashboard-header">
+            <h1>Marble Gallery Admin Dashboard</h1>
+        </div>
+
+        <div class="graph-container">
+            <h2>Raw Logs</h2>
+            <div class="log-controls">
+                <label for="log-type-filter">Filter by Log Type:</label>
+                <select id="log-type-filter" title="Filter by Log Type">
+                    <option value="all">All Events</option>
+                    <option value="pageview">Page Views</option>
+                    <option value="marble_click">Marble Clicks</option>
+                    <option value="route_travel">Route Travels</option>
+                </select>
+            </div>
+            <div id="raw-logs" class="raw-logs"></div>
+        </div>
+
+        <div class="graph-container">
+            <h2>Event Distribution</h2>
+            <div id="event-pie" class="graph"></div>
+        </div>
+
+        <div class="graph-container">
+            <h2>Page Views</h2>
+            <div id="page-bar" class="graph"></div>
+        </div>
+
+        <div class="graph-container">
+            <h2>Time Series: Page Views</h2>
+            <div id="time-series" class="graph"></div>
+        </div>
+
+        <div class="graph-container">
+            <h2>Top 5 User Agents</h2>
+            <div id="user-agents-bar" class="graph"></div>
+        </div>
+
+        <div class="graph-container">
+            <h2>Scroll Depth Distribution</h2>
+            <div id="scroll-depth-box" class="graph"></div>
+        </div>
+
+        <div class="graph-container">
+            <h2>Marble Clicks</h2>
+            <div id="marble-clicks" class="graph"></div>
+        </div>
+
+        <div class="graph-container">
+            <h2>Route Travels</h2>
+            <div id="route-travels" class="graph"></div>
+        </div>
+
+        <div class="stats-container">
+            <h2>Scroll Depth Statistics</h2>
+            <div id="scroll-depth-stats"></div>
+        </div>
+    </div>
+
+    <script>
+        const darkModeColors = {
+            background: '#1a1a1a',
+            text: '#e0e0e0',
+            gridLines: '#333333',
+            accent1: '#4ecdc4',
+            accent2: '#45b7d1',
+            accent3: '#ff6b6b',
+            accent4: '#ffa07a',
+            accent5: '#98d8c8'
+        };
+
+        const colorPalette = [
+            darkModeColors.accent1,
+            darkModeColors.accent2,
+            darkModeColors.accent3,
+            darkModeColors.accent4,
+            darkModeColors.accent5,
+            '#f06292',
+            '#aed581',
+            '#7986cb',
+            '#4db6ac',
+            '#ffd54f'
+        ];
+
+        const baseLayout = {
+            margin: { t: 50, b: 50, l: 70, r: 30 },
+            paper_bgcolor: darkModeColors.background,
+            plot_bgcolor: darkModeColors.background,
+            font: {
+                family: 'Roboto, sans-serif',
+                size: 14,
+                color: darkModeColors.text
+            },
+            title: {
+                font: {
+                    size: 24,
+                    color: darkModeColors.text
+                }
+            },
+            legend: {
+                bgcolor: 'rgba(26,26,26,0.6)',
+                bordercolor: darkModeColors.gridLines,
+                borderwidth: 1,
+                font: { color: darkModeColors.text }
+            },
+            colorway: colorPalette,
+            xaxis: {
+                gridcolor: darkModeColors.gridLines,
+                tickfont: { color: darkModeColors.text }
+            },
+            yaxis: {
+                gridcolor: darkModeColors.gridLines,
+                tickfont: { color: darkModeColors.text }
+            }
+        };
+
+        const createLayout = (title, additionalConfig = {}) => {
+            return Object.assign({}, baseLayout, { title }, additionalConfig);
+        };
+
+        const pieLayout = createLayout('Event Distribution', {
+            piecolorway: colorPalette
+        });
+
+        const barLayout = createLayout('Page Views', {
+            bargap: 0.2,
+            xaxis: {
+                ...baseLayout.xaxis,
+                tickangle: -45
+            }
+        });
+
+        const timeSeriesLayout = createLayout('Time Series: Page Views', {
+            xaxis: {
+                ...baseLayout.xaxis,
+                rangeslider: {visible: true},
+                title: 'Date'
+            },
+            yaxis: {
+                ...baseLayout.yaxis,
+                title: 'Views'
+            }
+        });
+
+        const userAgentsLayout = createLayout('Top 5 User Agents', {
+            bargap: 0.2,
+            xaxis: {
+                ...baseLayout.xaxis,
+                tickangle: -45
+            }
+        });
+
+        const scrollDepthLayout = createLayout('Scroll Depth Distribution', {
+            yaxis: {
+                ...baseLayout.yaxis,
+                title: 'Scroll Depth (%)'
+            }
+        });
+
+        const marbleClicksLayout = createLayout('Marble Clicks', {
+            bargap: 0.2,
+            xaxis: {
+                ...baseLayout.xaxis,
+                tickangle: -45,
+                title: 'Marble Type'
+            },
+            yaxis: {
+                ...baseLayout.yaxis,
+                title: 'Click Count'
+            }
+        });
+
+        const routeTravelsLayout = createLayout('Route Travels', {
+            bargap: 0.2,
+            xaxis: {
+                ...baseLayout.xaxis,
+                tickangle: -45,
+                title: 'Route'
+            },
+            yaxis: {
+                ...baseLayout.yaxis,
+                title: 'Travel Count'
+            }
+        });
+
+        const plotGraphs = () => {
+            Plotly.newPlot('event-pie', [{{ event_pie | safe }}], pieLayout);
+            Plotly.newPlot('page-bar', [{{ page_bar | safe }}], barLayout);
+            Plotly.newPlot('time-series', [{{ time_series | safe }}], timeSeriesLayout);
+            Plotly.newPlot('user-agents-bar', [{{ user_agents_bar | safe }}], userAgentsLayout);
+            Plotly.newPlot('scroll-depth-box', [{{ scroll_depth_box | safe }}], scrollDepthLayout);
+            Plotly.newPlot('marble-clicks', [{{ marble_clicks | safe }}], marbleClicksLayout);
+            Plotly.newPlot('route-travels', [{{ route_travels | safe }}], routeTravelsLayout);
+        };
+
+        plotGraphs();
+
+        window.addEventListener('resize', () => {
+            const graphs = ['event-pie', 'page-bar', 'time-series', 'user-agents-bar', 'scroll-depth-box', 'marble-clicks', 'route-travels'];
+            graphs.forEach(graph => {
+                Plotly.relayout(graph, {
+                    width: document.getElementById(graph).offsetWidth,
+                    height: document.getElementById(graph).offsetHeight
+                });
+            });
+        });
+
+        // Parse and display scroll depth statistics
+        const scrollDepthStats = JSON.parse('{{ scroll_depth_stats | safe }}');
+        const statsContainer = document.getElementById('scroll-depth-stats');
+        
+        const descriptions = {
+            'count': 'Total number of scroll depth measurements recorded.',
+            'mean': 'Average scroll depth across all measurements.',
+            'std': 'Standard deviation, measuring the spread of scroll depths.',
+            'min': 'Minimum scroll depth recorded.',
+            '25%': 'First quartile: 25% of users scrolled this much or less.',
+            '50%': 'Median: Half of the users scrolled this much or less.',
+            '75%': 'Third quartile: 75% of users scrolled this much or less.',
+            'max': 'Maximum scroll depth recorded.'
+        };
+
+        for (const [key, value] of Object.entries(scrollDepthStats)) {
+            const statItem = document.createElement('div');
+            statItem.className = 'stat-item';
+            
+            const statHeader = document.createElement('div');
+            statHeader.className = 'stat-header';
+            
+            const label = document.createElement('span');
+            label.className = 'stat-label';
+            label.textContent = key.charAt(0).toUpperCase() + key.slice(1);
+            
+            const statValue = document.createElement('span');
+            statValue.className = 'stat-value';
+            statValue.textContent = typeof value === 'number' ? value.toFixed(2) : value;
+            
+            statHeader.appendChild(label);
+            statHeader.appendChild(statValue);
+            
+            const description = document.createElement('div');
+            description.className = 'stat-description';
+            description.textContent = descriptions[key] || '';
+            
+            statItem.appendChild(statHeader);
+            statItem.appendChild(description);
+            statsContainer.appendChild(statItem);
+        }
+
+        // Logging function for marble clicks and route travels
+        function logEvent(eventType, data) {
+            fetch('/log_event', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    event_type: eventType,
+                    data: data
+                }),
+            })
+            .then(response => response.json())
+            .then(data => console.log('Event logged:', data))
+            .catch((error) => console.error('Error logging event:', error));
+        }
+
+        // Add event listeners to marble elements
+        document.querySelectorAll('.marble-item').forEach(marble => {
+            marble.addEventListener('click', function() {
+                logEvent('marble_click', {
+                    marble_name: this.dataset.marbleName,
+                    marble_id: this.dataset.marbleId
+                });
+            });
+        });
+
+        // Log route travels
+        const originalPushState = history.pushState;
+        history.pushState = function() {
+            originalPushState.apply(this, arguments);
+            logEvent('route_travel', {
+                route: window.location.pathname
+            });
+        };
+
+        window.addEventListener('popstate', function() {
+            logEvent('route_travel', {
+                route: window.location.pathname
+            });
+        });
+
+        // Initial route log
+        logEvent('route_travel', {
+            route: window.location.pathname
+        });
+
+        // Raw Logs Viewer
+        let allLogs = [];
+
+        function fetchRawLogs() {
+            fetch('/admin/raw_logs')
+                .then(response => response.json())
+                .then(data => {
+                    allLogs = data;
+                    displayLogs(allLogs);
+                })
+                .catch(error => {
+                    console.error('Error fetching raw logs:', error);
+                    document.getElementById('raw-logs').textContent = 'Error fetching logs. Please check the console for details.';
+                });
+        }
+
+        function displayLogs(logs) {
+            const logsContainer = document.getElementById('raw-logs');
+            logsContainer.innerHTML = '';
+            if (logs.length === 0) {
+                logsContainer.textContent = 'No logs found.';
+                return;
+            }
+            logs.forEach(log => {
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                logEntry.textContent = `${log.timestamp}: ${log.data}`;
+                logsContainer.appendChild(logEntry);
+            });
+        }
+
+        function filterLogs(eventType) {
+            if (eventType === 'all') {
+                displayLogs(allLogs);
+            } else {
+                const filteredLogs = allLogs.filter(log => log.data.includes(`Event: ${eventType}`));
+                displayLogs(filteredLogs);
+            }
+        }
+
+        document.getElementById('log-type-filter').addEventListener('change', function() {
+            filterLogs(this.value);
+        });
+
+        // Fetch logs every 30 seconds
+        fetchRawLogs();
+        setInterval(fetchRawLogs, 30000);
+    </script>
+</body>
+</html>
