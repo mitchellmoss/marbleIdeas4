@@ -63,6 +63,17 @@ const ResultCard = styled(Card)(({ theme }) => ({
   },
 }));
 
+const ComparisonImage = styled('img')({
+  width: 80, // increase the width
+  height: 80, // increase the height
+  objectFit: 'cover',
+  borderRadius: '50%',
+  border: '2px solid #fff',
+  position: 'absolute',
+  top: 10,
+  right: 10,
+});
+
 const ImageUpload = () => {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -244,6 +255,7 @@ const ImageUpload = () => {
                       image={marble.imageUrl}
                       alt={marble.marbleName}
                     />
+                    <ComparisonImage src={preview} alt="Uploaded marble" />
                     <CardContent>
                       <Typography variant="h6" gutterBottom>
                         {marble.marbleName}

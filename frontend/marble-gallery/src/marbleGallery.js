@@ -514,6 +514,66 @@ const WatermarkedImage = ({ src, alt, className }) => {
     );
   };
   
+  const VendorInfo = ({ marbleId }) => {
+    const [vendors, setVendors] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      const fetchVendors = async () => {
+        try {
+          const response = await axios.get(`/api/marble/${marbleId}/vendors`);
+          setVendors(response.data);
+        } catch (error) {
+          console.error('Error fetching vendors:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchVendors();
+    }, [marbleId]);
+
+    if (loading) {
+      return <p>Loading vendor information...</p>;
+    }
+
+    if (vendors.length === 0) {
+      return <p>No vendor information available.</p>;
+    }
+
+    return (
+      <div className="mt-4">
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">Vendor Information</h3>
+        {vendors.map((vendor) => (
+          <div key={vendor.id} className="mb-4 p-4 border rounded">
+            <div className="flex items-center mb-2">
+              {vendor.vendorLogo && (
+                <img 
+                  src={`data:image/jpeg;base64,${vendor.vendorLogo}`} 
+                  alt={`${vendor.name} logo`}
+                  className="w-12 h-12 mr-4 object-contain"
+                />
+              )}
+              <span className="text-lg font-medium">{vendor.name}</span>
+            </div>
+            <p className="text-gray-600">Location: {vendor.location}</p>
+            <p className="text-gray-600">Contact: {vendor.contact}</p>
+            {vendor.url && (
+              <a 
+                href={vendor.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                Visit Website
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+  
   const MarbleGallery = ({ marbles, loading, hasMore, loadMore, searchTerm, onSearch, isSearching }) => {
     const { selectedMarble, openMarbleModal, closeMarbleModal } = useMarbleGallery();
     const observer = useRef();
@@ -624,6 +684,7 @@ const WatermarkedImage = ({ src, alt, className }) => {
                     />
                   </div>
                   <ExpandableDescription description={selectedMarble.description} />
+                  <VendorInfo marbleId={selectedMarble.id} />
                   <button
                 onClick={handleShowSimilarMarbles}
                 className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
