@@ -6,43 +6,52 @@ Marble Gallery is a web application showcasing a curated collection of exquisite
 
 ```
 CREATE TABLE IF NOT EXISTS "images" (
-    "id"                INTEGER PRIMARY KEY,
-    "image"             BLOB,
-    "marbleName"        TEXT,
-    "marbleOrigin"      TEXT,
-    "fileName"          TEXT,
-    "stainResistance"   TEXT,
-    "costRange"         DECIMAL(10, 2),
-    "stoneColor"        TEXT,
-    "featured"          INTEGER DEFAULT 0,
-    "description"       TEXT,
-    "thermalExpansion"  REAL,
-    "cleaningTips"      TEXT,
-    "Rarity"            INTEGER CHECK(Rarity >= 1 AND Rarity <= 10),
-    "associatedVendor"  TEXT
+        "id"    INTEGER,
+        "image" BLOB,
+        "marbleName"    TEXT,
+        "marbleOrigin"  TEXT,
+        "fileName"      TEXT,
+        "stainResistance"       TEXT,
+        "costRange"     DECIMAL(10, 2),
+        "stoneColor"    TEXT,
+        "featured"      INTEGER DEFAULT 0,
+        "description"   TEXT,
+        "thermalExpansion"      REAL,
+        "cleaningTips"  TEXT, Rarity INTEGER CHECK(Rarity >= 1 AND Rarity <= 10), associatedVendor TEXT,
+        PRIMARY KEY("id")
 );
-
-CREATE TABLE vendors (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    location    TEXT NOT NULL,
-    contact     TEXT,
-    vendorLogo  BLOB,
-    name        TEXT,
-    url         TEXT
-);
-
-CREATE TABLE sqlite_sequence(
-    name,
-    seq
-);
-
+CREATE TABLE vendors (id INTEGER PRIMARY KEY AUTOINCREMENT, location TEXT NOT NULL,  INTEGER, contact TEXT, vendorLogo BLOB, name TEXT, url TEXT);
+CREATE TABLE sqlite_sequence(name,seq);
 CREATE TABLE marble_vendor_association (
-    marble_id   INTEGER,
-    vendor_id   INTEGER,
+    marble_id INTEGER,
+    vendor_id INTEGER,
     FOREIGN KEY (marble_id) REFERENCES [marble_images-2](id),
     FOREIGN KEY (vendor_id) REFERENCES vendors(id),
     PRIMARY KEY (marble_id, vendor_id)
 );
+CREATE VIRTUAL TABLE images_fts USING fts5(
+    id, marbleName, marbleOrigin, fileName, stainResistance, costRange, stoneColor, description, thermalExpansion,
+    content='images', content_rowid='id'
+)
+/* images_fts(id,marbleName,marbleOrigin,fileName,stainResistance,costRange,stoneColor,description,thermalExpansion) */;
+CREATE TABLE IF NOT EXISTS 'images_fts_data'(id INTEGER PRIMARY KEY, block BLOB);
+CREATE TABLE IF NOT EXISTS 'images_fts_idx'(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS 'images_fts_docsize'(id INTEGER PRIMARY KEY, sz BLOB);
+CREATE TABLE IF NOT EXISTS 'images_fts_config'(k PRIMARY KEY, v) WITHOUT ROWID;
+CREATE TRIGGER images_ai AFTER INSERT ON images BEGIN
+  INSERT INTO images_fts(id, marbleName, marbleOrigin, fileName, stainResistance, costRange, stoneColor, description, thermalExpansion)
+  VALUES (new.id, new.marbleName, new.marbleOrigin, new.fileName, new.stainResistance, new.costRange, new.stoneColor, new.description, new.thermalExpansion);
+END;
+CREATE TRIGGER images_ad AFTER DELETE ON images BEGIN
+  INSERT INTO images_fts(images_fts, id, marbleName, marbleOrigin, fileName, stainResistance, costRange, stoneColor, description, thermalExpansion)
+  VALUES('delete', old.id, old.marbleName, old.marbleOrigin, old.fileName, old.stainResistance, old.costRange, old.stoneColor, old.description, old.thermalExpansion);
+END;
+CREATE TRIGGER images_au AFTER UPDATE ON images BEGIN
+  INSERT INTO images_fts(images_fts, id, marbleName, marbleOrigin, fileName, stainResistance, costRange, stoneColor, description, thermalExpansion)
+  VALUES('delete', old.id, old.marbleName, old.marbleOrigin, old.fileName, old.stainResistance, old.costRange, old.stoneColor, old.description, old.thermalExpansion);
+  INSERT INTO images_fts(id, marbleName, marbleOrigin, fileName, stainResistance, costRange, stoneColor, description, thermalExpansion)
+  VALUES (new.id, new.marbleName, new.marbleOrigin, new.fileName, new.stainResistance, new.costRange, new.stoneColor, new.description, new.thermalExpansion);
+END;
 ```
 ## Features
 
