@@ -313,6 +313,51 @@ EOF
     log "WSGI server shutdown script finished."
 }
 
+# New function to deploy only the frontend build
+deploy_frontend_build() {
+    log "Starting deployment of frontend build..."
+
+    # Build the frontend
+    log "Building the frontend..."
+    cd frontend/marble-gallery
+    npm run build
+    cd ../..
+
+    # Create a zip of the build directory
+    log "Zipping the build directory..."
+    zip -r frontend_build.zip frontend/marble-gallery/build
+
+    # Transfer the zip file to the server
+    log "Transferring frontend build to remote server..."
+    sshpass -p "$SSH_PASSWORD" scp frontend_build.zip $SERVER:/tmp/
+
+    # Extract and replace the build directory on the server
+    log "Updating frontend build on remote server..."
+    sshpass -p "$SSH_PASSWORD" ssh $SERVER << EOF
+        set -x  # Enable command tracing
+
+        # Remove existing build directory
+        rm -rf $DEPLOY_DIR/frontend/marble-gallery/build
+
+        # Extract new build directory
+        unzip -o /tmp/frontend_build.zip -d $DEPLOY_DIR
+
+        # Replace 127.0.0.1:8000 with marble.boston and fix https in all files
+        find $DEPLOY_DIR/frontend/marble-gallery/build -type f -exec sed -i 's/127\.0\.0\.1:8000/marble.boston/g; s/https\([^:]\)/https:\1/g' {} +
+
+        # Clean up
+        rm /tmp/frontend_build.zip
+
+        echo "Frontend build deployment completed."
+EOF
+
+    # Clean up local zip file
+    log "Cleaning up local zip file..."
+    rm frontend_build.zip
+
+    log "Frontend build deployment finished."
+}
+
 # Main script logic
 case "$1" in
     1)
@@ -330,13 +375,17 @@ case "$1" in
     5)
         kill_wsgi_service
         ;;
+    6)
+        deploy_frontend_build
+        ;;
     *)
-        echo "Usage: $0 {1|2|3|4|5}"
+        echo "Usage: $0 {1|2|3|4|5|6}"
         echo "  1: Perform full redeployment"
         echo "  2: Start WSGI server as a daemonized service"
         echo "  3: Set environment variables on the remote server"
         echo "  4: Deploy only changed files"
         echo "  5: Kill WSGI server service"
+        echo "  6: Deploy only frontend build"
         exit 1
         ;;
 esac
